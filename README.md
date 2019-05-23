@@ -356,6 +356,11 @@ integration_test_person_group/person_group/_search
 - 查询服务解析`json`请求，进行一些预处理后，使用`ElasticSearch Java Rest Client`转发到ElasticSearch，将得到的响应进行解析，进一步处理后返回到客户端。
 - 为了便于客户端人员开发，查询服务提供了一个[查询UI界面](http://localhost:9000/api/v1)，开发人员可以在这个页面得到预期结果后再把json请求体复制到程序中。
 
+At-Least Once Delivery :
+- Jkes使用每个关系表的每条记录的更新时间戳进行来实现最少一次索引。jkes会定期`checkpoint`每个表的索引时间戳位置，在`failure recovery`时，从该时间戳开始拉取每个表的最新数据，索引到数据库，使用ElasticSearch的版本机制确保旧的数据不会覆盖新的索引。
+- `checkpoint`数据仅用于`failure recovery`。正常情况下，jkes是在数据库事务完成后发布更新和我删除事件到kafka。只有出现失败，导致事务完成后，数据还没有发布到kafka，这种情况下jkes才会在`failure recovery`时使用`checkpoint`数据重新索引。数据删除的最少一次交付目前需要在数据库中记录一张删除事件表，用于在`failure recovery`时发布删除事件，该功能性能较差，目前尚未实现。
+- 如果当前没有`checkpoint`元数据，则会全量索引每个表。
+
 ## 流程图
 ![Jkes流程图](https://raw.githubusercontent.com/chaokunyang/jkes/master/docs/images/Jkes%20Architecture.png)
 
